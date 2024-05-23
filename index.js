@@ -33,7 +33,8 @@ async function run() {
 
     app.post("/create-process", async (req, res) => {
       try {
-        const { id } = req.body;
+        // const { id } = req.body;
+        let id= Math.random().toString(36).substr(2, 8);
         const createTime = new Date();
         const formattedDate = format(createTime, "hh:mm a dd M yyyy");
         const newProcess = { PID: id, creationTime: formattedDate };
