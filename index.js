@@ -26,7 +26,9 @@ async function run() {
     await client.connect();
     console.log("Successfully connected to MongoDB!");
 
-    const processCollection = client.db(process.env.DB_NAME).collection("process");
+    const processCollection = client
+      .db(process.env.DB_NAME)
+      .collection("process");
     const logCollection = client.db(process.env.DB_NAME).collection("log");
 
     app.post("/create-process", async (req, res) => {
@@ -35,37 +37,45 @@ async function run() {
         const createTime = new Date();
         const formattedDate = format(createTime, "hh:mm a dd M yyyy");
         const newProcess = { PID: id, creationTime: formattedDate };
-        
+
         const result = await processCollection.insertOne(newProcess);
         const intervalId = setInterval(async () => {
           try {
             const logTime = new Date();
             const logFormattedDate = format(logTime, "hh:mm a dd M yyyy");
             const logData = { PID: id, creationTime: logFormattedDate };
-            
             await logCollection.insertOne(logData);
-            console.log(`Inserted log for ${id}`);
           } catch (error) {
             console.error("Error inserting log", error);
           }
         }, 5000);
 
-        intervals.set(result.insertedId.toString(), intervalId);
-        res.send({ PID: newProcess.PID, creationTime: newProcess.creationTime });
+        intervals.set(id, intervalId);
+        res.send({
+          PID: newProcess.PID,
+          creationTime: newProcess.creationTime,
+        });
       } catch (error) {
         console.error("Error inserting process", error);
-        res.status(500).send({ status: "error", message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ status: "error", message: "Internal Server Error" });
       }
     });
 
     app.get("/get-all", async (req, res) => {
       try {
         const result = await processCollection.find({}).toArray();
-        const data = result.map(element => ({ PID: element.PID, creationTime: element.creationTime }));
+        const data = result.map((element) => ({
+          PID: element.PID,
+          creationTime: element.creationTime,
+        }));
         res.send(data);
       } catch (error) {
         console.error("Error getting processes", error);
-        res.status(500).send({ status: "error", message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ status: "error", message: "Internal Server Error" });
       }
     });
 
@@ -73,11 +83,13 @@ async function run() {
       try {
         const { id } = req.body;
         const result = await logCollection.find({ PID: id }).toArray();
-        const data = result.map(element => element.creationTime);
+        const data = result.map((element) => element.creationTime);
         res.send({ logs: data });
       } catch (error) {
         console.error("Error getting single process logs", error);
-        res.status(500).send({ status: "error", message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ status: "error", message: "Internal Server Error" });
       }
     });
 
@@ -85,25 +97,30 @@ async function run() {
       try {
         const { id } = req.body;
         const query = { PID: id };
-    
+
         const processResult = await processCollection.deleteOne(query);
         const logDeleteResult = await logCollection.deleteMany(query);
-    
+
         // Clear the interval associated with the process ID
         const intervalId = intervals.get(id);
         if (intervalId) {
           clearInterval(intervalId);
           intervals.delete(id);
         }
-    
-        res.send({ status: "success", message: `PID - ${id}: Process and logs successfully deleted`, processResult, logDeleteResult });
+
+        res.send({
+          status: "success",
+          message: `PID - ${id}: Process and logs successfully deleted`,
+          processResult,
+          logDeleteResult,
+        });
       } catch (error) {
         console.error("Error deleting process and logs", error);
-        res.status(500).send({ status: "error", message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ status: "error", message: "Internal Server Error" });
       }
     });
-    
-
   } catch (error) {
     console.error("Error connecting to MongoDB", error);
     process.exit(1); // Exit process with failure
